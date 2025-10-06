@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit IP Address</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f7f6; color: #333; }
+        nav { background-color: #2c3e50; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        nav a { float: left; display: block; color: white; text-align: center; padding: 14px 20px; text-decoration: none; font-weight: bold; transition: background-color 0.3s; }
+        nav a:hover { background-color: #34495e; }
+        .container { max-width: 800px; margin: 50px auto; padding: 30px; background-color: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; }
+        .filter-section, .edit-section { margin-bottom: 20px; }
+        .filter-section form { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+        .filter-section input, .filter-section select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .filter-btn { padding: 10px 15px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .filter-btn:hover { background-color: #2980b9; }
+        #ip-list-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        #ip-list-table th, #ip-list-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        #ip-list-table th { background-color: #e9ecef; }
+        .edit-btn, .delete-btn { padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+        .edit-btn { background-color: #f39c12; color: white; border: none; }
+        .delete-btn { background-color: #e74c3c; color: white; border: none; }
+        .edit-form-row { background-color: #f9f9f9; }
+        .edit-form-row input { width: 100px; }
+        .save-btn { background-color: #2ecc71; color: white; border: none; padding: 8px 12px; }
+        .cancel-btn { background-color: #95a5a6; color: white; border: none; padding: 8px 12px; }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="/">Home</a>
+        <a href="/add">Add IP Address</a>
+        <a href="/edit">Edit IP Address</a>
+        <a href="/list">Generate List</a>
+    </nav>
+    
+    <div class="container">
+        <h1>Edit/Delete IP Address</h1>
+        
+        <div class="filter-section">
+            <h2>Filter IPs</h2>
+            <form id="filter-form">
+                <input type="text" id="filter-ip" placeholder="Filter by IP address">
+                <select id="filter-location" name="location">
+                    <option value="">All Locations</option>
+                    <option value="Main Building">Main Building</option>
+                    <option value="North Side">North Side</option>
+                    <option value="South Side">South Side</option>
+                    <option value="East Side">East Side</option>
+                    <option value="West Side">West Side</option>
+                </select>
+                <input type="text" id="filter-department" placeholder="Filter by Department">
+                <input type="text" id="filter-room" placeholder="Filter by Room No.">
+                <button type="submit" class="filter-btn">Filter</button>
+            </form>
+        </div>
+
+        <div class="edit-section">
+            <h2>IP Address List</h2>
+            <table id="ip-list-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Location</th>
+                        <th>Department</th>
+                        <th>IP Address</th>
+                        <th>Room No.</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const filterForm = document.getElementById('filter-form');
+        const ipListTableBody = document.querySelector('#ip-list-table tbody');
+
+        const fetchIPs = async (filters = {}) => {
+            let url = '/api/ips?';
+            const params = new URLSearchParams();
+            if (filters.ip_3_octets) params.append('ip_3_octets', filters.ip_3_octets);
+            if (filters.location) params.append('location', filters.location);
+            if (filters.department_name) params.append('department_name', filters.department_name);
+            if (filters.room_number) params.append('room_number', filters.room_number);
+
+            url += params.toString();
+
+            try {
+                const response = await fetch(url);
+                const ips = await response.json();
+                renderIPs(ips);
+            } catch (err) {
+                console.error('Failed to fetch IPs:', err);
+            }
+        };
+
+        const renderIPs = (ips) => {
+            ipListTableBody.innerHTML = '';
+            if (ips.length === 0) {
+                ipListTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No IP addresses found.</td></tr>';
+                return;
+            }
+
+            ips.forEach(ip => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${ip.id}</td>
+                    <td>${ip.location}</td>
+                    <td>${ip.department_name}</td>
+                    <td>${ip.ip_3_octets}.${ip.ip_4_octet}</td>
+                    <td>${ip.room_number || 'N/A'}</td>
+                    <td>
+                        <button class="edit-btn" data-id="${ip.id}">Edit</button>
+                        <button class="delete-btn" data-id="${ip.id}">Delete</button>
+                    </td>
+                `;
+                ipListTableBody.appendChild(row);
+            });
+        };
+
+        const handleEdit = (e) => {
+            const row = e.target.closest('tr');
+            const ip = {
+                id: row.children[0].textContent,
+                location: row.children[1].textContent,
+                department_name: row.children[2].textContent,
+                ip_address: row.children[3].textContent,
+                room_number: row.children[4].textContent === 'N/A' ? '' : row.children[4].textContent
+            };
+
+            row.innerHTML = `
+                <td>${ip.id}</td>
+                <td>${ip.location}</td>
+                <td>${ip.department_name}</td>
+                <td>
+                    <input type="text" value="${ip.ip_address.split('.')[0]}.${ip.ip_address.split('.')[1]}.${ip.ip_address.split('.')[2]}" placeholder="IP 3 Octets">
+                    <input type="number" value="${ip.ip_address.split('.')[3]}" placeholder="IP 4 Octet" min="1" max="254">
+                </td>
+                <td><input type="text" value="${ip.room_number}" placeholder="Room No."></td>
+                <td>
+                    <button class="save-btn" data-id="${ip.id}">Save</button>
+                    <button class="cancel-btn">Cancel</button>
+                </td>
+            `;
+            row.classList.add('edit-form-row');
+
+            row.querySelector('.save-btn').addEventListener('click', handleSave);
+            row.querySelector('.cancel-btn').addEventListener('click', () => {
+                fetchIPs();
+            });
+        };
+
+        const handleSave = async (e) => {
+            const id = e.target.dataset.id;
+            const row = e.target.closest('tr');
+            const ip_3_octets = row.children[3].querySelector('input[type="text"]').value;
+            const ip_4_octet = row.children[3].querySelector('input[type="number"]').value;
+            const room_number = row.children[4].querySelector('input[type="text"]').value;
+
+            try {
+                const response = await fetch(`/api/ips/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip_3_octets, ip_4_octet, room_number })
+                });
+
+                if (response.ok) {
+                    await fetchIPs();
+                    alert('IP address updated successfully!');
+                } else {
+                    const error = await response.json();
+                    alert(`Failed to update IP address: ${error.message}`);
+                }
+            } catch (err) {
+                alert('Failed to connect to server.');
+            }
+        };
+
+        const handleDelete = async (e) => {
+            const id = e.target.dataset.id;
+            if (confirm('Are you sure you want to delete this IP address?')) {
+                try {
+                    const response = await fetch(`/api/ips/${id}`, {
+                        method: 'DELETE'
+                    });
+                    if (response.ok) {
+                        await fetchIPs();
+                        alert('IP address deleted successfully!');
+                    } else {
+                        const error = await response.json();
+                        alert(`Failed to delete IP address: ${error.message}`);
+                    }
+                } catch (err) {
+                    alert('Failed to connect to server.');
+                }
+            }
+        };
+
+        ipListTableBody.addEventListener('click', (e) => {
+            if (e.target.classList.contains('edit-btn')) {
+                handleEdit(e);
+            } else if (e.target.classList.contains('delete-btn')) {
+                handleDelete(e);
+            }
+        });
+
+        filterForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const filters = {
+                ip_3_octets: document.getElementById('filter-ip').value.trim(),
+                location: document.getElementById('filter-location').value,
+                department_name: document.getElementById('filter-department').value.trim(),
+                room_number: document.getElementById('filter-room').value.trim()
+            };
+
+            fetchIPs(filters);
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchIPs();
+        });
+    </script>
+</body>
+</html>

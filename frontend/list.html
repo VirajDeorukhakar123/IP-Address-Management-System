@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP Address List</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f7f6; color: #333; }
+        nav { background-color: #2c3e50; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        nav a { float: left; display: block; color: white; text-align: center; padding: 14px 20px; text-decoration: none; font-weight: bold; transition: background-color 0.3s; }
+        nav a:hover { background-color: #34495e; }
+        .generate-btn { padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #1abc9c; color: white; border: none; border-radius: 4px; transition: background-color 0.3s; }
+        .generate-btn:hover { background-color: #16a085; }
+        .list-container { max-width: 1200px; margin: 50px auto; padding: 20px; background-color: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .timestamp { font-size: 0.9em; color: #666; text-align: right; margin-top: 10px; }
+
+        /* Styles for the format you provided */
+        .ip-list-row {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 20px;
+            overflow-x: auto;
+            padding-bottom: 20px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+        .location-group {
+            flex-shrink: 0;
+            min-width: 300px;
+            box-sizing: border-box;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .location-header {
+            background-color: #2980b9;
+            color: white;
+            padding: 10px 15px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            font-size: 1.2em;
+        }
+        .location-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 0;
+        }
+        .location-table th, .location-table td { 
+            border: 1px solid #ddd; 
+            padding: 8px; 
+            text-align: left; 
+        }
+        .location-table th { 
+            background-color: #ecf0f1;
+            color: #495057;
+        }
+        .location-table tbody tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .show-more-btn {
+            display: block;
+            width: calc(100% - 30px);
+            margin: 10px 15px 15px;
+            padding: 8px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .hidden-row {
+            display: none;
+        }
+
+        /* Responsive design for mobile devices */
+        @media (max-width: 1200px) {
+            .ip-list-row {
+                flex-direction: column;
+                align-items: center;
+                overflow-x: unset;
+                padding: 0 10px;
+            }
+            .location-group {
+                min-width: unset;
+                width: 90%;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="/">Home</a>
+        <a href="/add">Add IP Address</a>
+        <a href="/edit">Edit IP Address</a>
+        <a href="/list">Generate List</a>
+    </nav>
+    
+    <div class="container">
+        <h1>Generate IP Address List</h1>
+        
+        <button id="generate-list-btn" class="generate-btn">Generate List</button>
+        
+        <div id="list-output" style="display: none;">
+            <div id="timestamp-display" class="timestamp"></div>
+            <div id="row1" class="ip-list-row"></div>
+            <div id="row2" class="ip-list-row"></div>
+        </div>
+    </div>
+
+    <script>
+        const generateBtn = document.getElementById('generate-list-btn');
+        const listOutputDiv = document.getElementById('list-output');
+        const row1Div = document.getElementById('row1');
+        const row2Div = document.getElementById('row2');
+        const timestampDisplay = document.getElementById('timestamp-display');
+        
+        const locationOrder = ['Main Building', 'North Side', 'South Side', 'East Side', 'West Side'];
+
+        generateBtn.addEventListener('click', async () => {
+            const response = await fetch('/api/list');
+            const data = await response.json();
+            
+            const now = new Date();
+            const timestamp = now.toLocaleString();
+            timestampDisplay.textContent = `List generated on: ${timestamp}`;
+
+            row1Div.innerHTML = '';
+            row2Div.innerHTML = '';
+
+            if (Object.keys(data).length > 0) {
+                locationOrder.forEach((location, index) => {
+                    if (data[location]) {
+                        const locationGroupDiv = document.createElement('div');
+                        locationGroupDiv.className = 'location-group';
+                        
+                        const locationHeader = document.createElement('h3');
+                        locationHeader.className = 'location-header';
+                        locationHeader.textContent = `Location: ${location}`;
+                        locationGroupDiv.appendChild(locationHeader);
+
+                        const table = document.createElement('table');
+                        table.className = 'location-table';
+                        
+                        let tableHTML = `
+                            <thead>
+                                <tr>
+                                    <th>Department</th>
+                                    <th>IP Address</th>
+                        `;
+                        
+                        if (location === 'Main Building') {
+                            tableHTML += `<th>Room No.</th>`;
+                        }
+                        
+                        tableHTML += `
+                                </tr>
+                            </thead>
+                            <tbody>
+                        `;
+
+                        data[location].forEach((ip, ipIndex) => {
+                            let rowClass = '';
+                            if (ipIndex >= 5) {
+                                rowClass = 'hidden-row';
+                            }
+                            
+                            tableHTML += `<tr class="${rowClass}">`;
+                            tableHTML += `<td>${ip.department_name || 'N/A'}</td>`;
+                            tableHTML += `<td>${ip.ip_3_octets}.${ip.ip_4_octet}</td>`;
+                            
+                            if (location === 'Main Building') {
+                                tableHTML += `<td>${ip.room_number || 'N/A'}</td>`;
+                            }
+                            
+                            tableHTML += `</tr>`;
+                        });
+                        
+                        tableHTML += `</tbody>`;
+                        
+                        table.innerHTML = tableHTML;
+                        locationGroupDiv.appendChild(table);
+
+                        if (data[location].length > 5) {
+                            const showMoreBtn = document.createElement('button');
+                            showMoreBtn.textContent = `Show All ${data[location].length} IPs`;
+                            showMoreBtn.className = 'show-more-btn';
+                            showMoreBtn.addEventListener('click', () => {
+                                const hiddenRows = locationGroupDiv.querySelectorAll('.hidden-row');
+                                hiddenRows.forEach(hiddenRow => {
+                                    hiddenRow.style.display = 'table-row';
+                                });
+                                showMoreBtn.style.display = 'none';
+                            });
+                            locationGroupDiv.appendChild(showMoreBtn);
+                        }
+
+                        if (index < 3) {
+                            row1Div.appendChild(locationGroupDiv);
+                        } else {
+                            row2Div.appendChild(locationGroupDiv);
+                        }
+                    }
+                });
+            } else {
+                row1Div.textContent = 'No IP addresses found.';
+            }
+
+            listOutputDiv.style.display = 'block';
+        });
+    </script>
+</body>
+</html>
