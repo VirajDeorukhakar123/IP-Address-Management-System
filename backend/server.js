@@ -3,8 +3,10 @@ const mysql = require('mysql');
 const path = require('path'); // Import the 'path' module
 const app = express();
 const port = 3000;
-require('dotenv').config();
+const dotenv = require("dotenv");
+dotenv.config();
 
+    
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
