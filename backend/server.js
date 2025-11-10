@@ -3,15 +3,17 @@ const mysql = require('mysql');
 const path = require('path'); // Import the 'path' module
 const app = express();
 const port = 3000;
+require('dotenv').config();
+
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: 'light123',
-    database: 'uni_database'
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: process.env.DB_NAME
 });
 
 db.connect((err) => {
